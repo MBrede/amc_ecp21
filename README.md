@@ -16,7 +16,7 @@ To view the presentation, visit [this link](https://mbrede.github.io/amc_ecp21/)
 
 ## Presentation Details
 
-The presentation was be given at the [21st European Congress of Psychology (ECP)](https://ecp21berlin.org/frontend/index.php) in Berlin.
+The presentation was given at the [21st European Congress of Psychology (ECP)](https://ecp21berlin.org/frontend/index.php) in Berlin.
 
 ## License
 
