@@ -1,0 +1,29 @@
+.reveal .slide-logo {
+  height: 100px !important;
+  width: 300px !important;
+  max-width: unset !important;
+  max-height: unset !important;
+}
+
+.smaller {
+    position: relative;
+    height: 100%;
+}
+
+.smaller .small {
+    position: absolute;
+    bottom: 100px;
+    width: 100%;
+}
+
+.small .caption-top {
+    border-collapse: collapse;
+}
+
+.small .caption-top tr,
+.small .caption-top td,
+.small .caption-top th {
+    border: none;
+    font-size: smaller;
+    white-space: nowrap;
+}

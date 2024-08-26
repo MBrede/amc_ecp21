@@ -1,0 +1,373 @@
+
+# Background
+
+```{r setup}
+#| include: false
+#| fig.width: 20
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(purrr)
+library(tidyr)
+library(magrittr)
+
+palette <- 'Archambault'
+base_size <- 12
+
+theme_set(KITra::theme_CAU(base_size = 12))
+```
+
+```{r import}
+redacted <- read_tsv('_data/PSE_1.0_redacted_data.tsv') |> 
+  filter(!holdout & wc > 3)
+holdout <- read_tsv('_data/PSE_1.0_holdout_data.tsv') |> 
+  filter(wc > 3)
+```
+
+## Implicit Motives 
+
+**Implicit motives** are motivational dispositions [...] that operate outside of a person’s conscious awareness, and that promote attainment of certain classes of incentives and avoidance of certain classes of disincentives [@schultheissImplicitMotives2021].
+
+Implicit Motives are typically measured using (semi-) projective measures, i.e., the **Picture Story Exercises**.
+
+@schultheissAreImplicitExplicit2009 showed that correlations between **Implicit Motives** and **Explicit Motives** (i.e. motives measured with questionnaires) were *"small and mostly nonsignificant"*.
+
+
+
+## Measurement of Implicit Motives - PSE {.smaller .scrollable}
+
+:::: {.columns}
+
+::: {.column width="30%"}
+![Example image used in the PSE; Source: @ramsayRefiningPictureStory2014 ](imgs/Blueprints.jpg)
+:::
+
+::: {.column width="70%"}
+> Two months ago, 40-year-old Frank received a good offer from New York. In discussion with his family, he accepted the offer and is now sitting in his office in New York. Like every morning, he reads the latest news in the daily newspaper. The picture of his family has a place of honor on his desk and is always at hand so that he can take a closer look at it. He misses his family as he can't fly back home until Christmas. In the 4 weeks so far, the time difference has been particularly difficult for him, as work and the different times have made it difficult to make contact. He is already looking forward to seeing his wife and children again.
+
+:::
+
+::::
+
+## Winter Coding-Manual
+
+![Source: @winterMeasuringPersonalityDistance1991](imgs/winter_dimensions.png)
+
+## Measurement of Implicit Motives - PSE {.smaller .scrollable}
+
+:::: {.columns}
+
+::: {.column width="30%"}
+![Example image used in the PSE; Source: @ramsayRefiningPictureStory2014](imgs/Blueprints.jpg)
+:::
+
+::: {.column width="70%"}
+> Two months ago, 40-year-old Frank received a good offer from New York. In discussion with his family, he accepted the offer and is now sitting in his office in New York. Like every morning, he reads the latest news in the daily newspaper. **The picture of his family has a place of honor on his desk and is always at hand so that he can take a closer look at it. He misses his family as he can't fly back home until Christmas. In the 4 weeks so far, the time difference has been particularly difficult for him, as work and the different times have made it difficult to make contact. He is already looking forward to seeing his wife and children again.**
+:::
+
+::::
+
+# The Automatic Motive Coder :robot: 
+
+## Dataset {.smaller}
+:::: {.columns}
+
+::: {.column width="40%"}
+
+@schonbrodtMeasuringImplicitMotives2021a published a database of 
+
+* `r format(length(redacted$text), big.mark=',')` sentences from 
+* `r format(length(unique(redacted$USID)), big.mark=',')` stories written by 
+* `r format(length(unique(redacted$participant_id)), big.mark=',')` participants in 
+* `r format(length(unique(redacted$study_id)), big.mark=',')` studies 
+
+Each coded by experts based on the Winter Manual [@winterManualScoringMotive1991].
+
+:::
+
+::: {.column width="60%"}
+```{r}
+#| eval: False
+redacted %>%
+  mutate(across(all_of(c('age', 'gender')), ~ ifelse(is.na(.), 'n.d.', .)),
+         age = factor(age, levels = rev(c(
+             "age <= 25",
+             "25 < age <= 35",
+             "35 < age <= 45",
+             "45 < age <= 55",
+             "age > 55",
+             'n.d.'
+           )
+         )),
+         motclass = case_when(motclass == 'ach' ~ 'Achievement',
+                              motclass == 'aff' ~ 'Affiliation',
+                              motclass == 'pow' ~ 'Power',
+                              T ~ 'None'),
+         ) %>%
+  ggplot(aes(x = gender, group = age, fill = age)) +
+  geom_bar() +
+  MetBrewer::scale_fill_met_d(palette,direction = -1) +
+  labs(fill = '', subtitle = 'Distibution of age and gender by Coded Implicit Motive') +
+  facet_wrap( ~ motclass)
+```
+
+```{r}
+library(ggalluvial)
+
+
+df <- tibble(
+  N = c(length(redacted$text), length(unique(redacted$USID)), 
+            length(unique(redacted$participant_id)), 
+            length(unique(redacted$study_id))),
+  count = factor(rev(c('Studies', 'Subjects', 'Stories', 'Sentences')),
+                 levels = c('Studies', 'Subjects', 'Stories', 'Sentences'))
+)
+
+ggplot(data = df,
+       aes(x = count, y = N, alluvium = 1)) +
+  geom_alluvium(alpha = .75, decreasing = FALSE,
+                fill = '#381A61') +
+  theme_void() +
+  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
+  geom_label(data = ~mutate(., label = format(N, big.mark=','), N = N/2),
+             aes(label = label))
+
+
+```
+
+
+:::
+
+::::
+
+
+## Automatic Motive Coder :robot:
+### Bag Of Words (BOW)
+
+
+![BOW-representation of sentences.](imgs/bow.gif){width=100%}
+
+## Automatic Motive Coder :robot:
+### Embedding-example: Continuous BOW (CBOW)
+
+![CBOW-representation of corpus.](imgs/cbow_first_frame.png){width=100%}
+
+## Automatic Motive Coder :robot:
+### Embedding-example: Continuous BOW (CBOW)
+
+![CBOW-representation of corpus.](imgs/cbow.gif){width=100%}
+
+
+## Automatic Motive Coder :robot:
+### fasttext^[kind of]
+
+
+![Model using CBOW-Method to predict missing word.](imgs/training.gif){width=100%}
+
+
+## Automatic Motive Coder :robot:
+### (L)LM -Embeddings
+
+
+![Model using CBOW-Method to predict missing word.](imgs/embeddings.gif){width=100%}
+
+
+
+## Tested :robot:-Architectures
+::: {.columns}
+::: {.column width="70%"}
+1. "Traditional" BOW/Embedding-Classifier-Stack 
+
+2. LoRA-Finetuning of small LM [@huLoRALowRankAdaptation2021]
+:::
+:::{.column width="30%"}
+![AMC-Illustration, Source: DALL-E](imgs/AMC_illustration.webp)
+:::
+:::
+
+
+
+## Embedding - Classifier-Stack {.smaller}
+
+
+![Illustration of Classifier-Stack](imgs/model.png)
+
+
+
+## LoRA {.smaller}
+
+* Finetuning of small LMs (Phi-3-mini-4k[@UnslothPhi3mini4kinstructHugging]/gemma-2b[@GoogleGemma2bHugging2024]) (partly) based on the following prompt:
+
+
+```
+- **Achievement**: Label as 'ach' if the sentence suggests goals related to personal success, overcoming 
+challenges, or mastering skills.
+
+- **Affiliation**: Label as 'aff' if the sentence emphasizes relationships, emotional connections, 
+or social belonging.
+
+- **Power**: Label as 'pow' if the sentence implies influencing, controlling, or impacting others, or showcases 
+a desire for authority or prestige.
+
+- **None**: Use 'null' if the sentence does not clearly align with the above categories or lacks sufficient context 
+to determine a specific motive.
+```
+
+## Example
+
+### Comparison between model results and expert coding {.scrollable}
+
+
+```{r}
+library(flextable)
+
+read_tsv('_data/model_codings.csv') |> 
+  flextable() %>% 
+  separate_header() |> 
+  footnote(i = 1, j = 3, part = 'header', value = as_paragraph(c('Mixtral-8x7B-Instruct-v0.1 with MLP-Classifier'))) |> 
+  autofit() |> 
+  highlight(j = 3:6,
+            color = \(x) ifelse(x > .5, '#88A0DC', '#fff'))
+```
+
+## Validation Metrics {.smaller }
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+Procedure as described in @schonbrodtMeasuringImplicitMotives2021a:
+
+1. Summation of Motive score (1/0-coded) and word-count per subject
+
+2. Robust regression of motive score on word-count / 1,000
+
+3. Extraction of residuals as corrected motive score
+
+4. Pearson-Correlation of expert coded motive scores and model coded scores
+
+:::
+:::{.column width="50%"}
+```{r}
+library(ggalluvial)
+
+
+df <- tibble(
+  N = c(length(holdout$text), length(unique(holdout$USID)), 
+            length(unique(holdout$participant_id)), 
+            length(unique(holdout$study_id))),
+  count = factor(rev(c('Studies', 'Subjects', 'Stories', 'Sentences')),
+                 levels = c('Studies', 'Subjects', 'Stories', 'Sentences'))
+)
+
+ggplot(data = df,
+       aes(x = count, y = N, alluvium = 1)) +
+  geom_alluvium(alpha = .75, decreasing = FALSE,
+                fill = '#381A61') +
+  theme_void() +
+  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
+  geom_label(data = ~mutate(., label = format(N, big.mark=','), N = N/2),
+             aes(label = label)) +
+  labs(subtitle = 'Holdout-Set')
+
+
+```
+:::
+:::
+## Results
+
+::: {.columns}
+::: {.column width="50%"}
+
+### German Texts
+
+```{r}
+readr::read_csv('_data/german_results.csv') %>% 
+pivot_longer(2:5) %>% 
+group_by(name) %>% 
+mutate(value = ifelse(is.na(value) & Motive == 'mean', round(mean(value, na.rm = T),2), value)) %>% 
+pivot_wider() %>% 
+  flextable() %>% 
+  footnote(i = 1, j = c(3, 4), value = as_paragraph(c('Mixtral-8x7B-Instruct-v0.1 with MLP-Classifier', 'gemma-2b')),
+part = 'header')
+```
+
+
+:::
+::: {.column width="50%"}
+
+### Translated to English
+
+```{r}
+readr::read_csv('_data/english_results.csv') %>% 
+pivot_longer(2:5) %>% 
+group_by(name) %>% 
+mutate(value = ifelse(is.na(value) & Motive == 'mean', round(mean(value, na.rm = T),2), value)) %>% 
+pivot_wider() %>% 
+  flextable() %>% 
+  footnote(i = 1, j = c(3, 4), value = as_paragraph(c('Mixtral-8x7B-Instruct-v0.1 with MLP-Classifier', 'gemma-2b')),
+part = 'header')
+```
+
+:::
+:::
+
+
+
+## Outlook
+
+* Further optimization
+
+* Test of the general pipeline on other motive measures
+
+* Publication of python-code / R-Wrapper for convenient usage
+
+* Implementation of "SetFit" [@tunstallEfficientFewShotLearning2022]
+
+
+
+
+
+## Thank You!
+
+:::{.columns}
+:::{.column width="40%" .smaller}
+
+::: {.small}
+Contact me:
+
+|   |   |
+|:--:|:---|
+| {{< fa solid envelope >}}: | brede@psychologie.uni-kiel.de |
+| {{< fa brands github >}}: | MBrede |
+| {{< fa solid laptop >}}: | max-bre.de |
+| {{< fa brands mastodon >}}: | \@mbrede\@fediscience.org |
+
+:::
+
+
+:::
+:::{.column width="60%"}
+
+Repo with this presentation:
+
+```{r}
+qrcode::qr_code('https://github.com/MBrede/amc_ecp21',
+                ecl = 'H') |> 
+  qrcode::add_logo('imgs/robot_face.png') |> 
+  plot()
+```
+
+:::
+:::
+
+## References
+
+::: {#refs}
+:::
+
+
+
+
